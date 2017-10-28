@@ -5,6 +5,8 @@ import AppBar from 'material-ui/AppBar';
 import Toolbar from 'material-ui/Toolbar';
 import MenuIcon from 'material-ui-icons/Menu';
 import Hidden from 'material-ui/Hidden';
+import Button from 'material-ui/Button';
+import Table, { TableBody, TableCell, TableHead, TableRow } from 'material-ui/Table';
 
 import IconButton from 'material-ui/IconButton';
 
@@ -70,29 +72,35 @@ const styles = theme => ({
 class IplogComponent extends Component {
   constructor (props) {
     super(props)
-    this.state = {log: []}
+    this.state = {log: [], offset: 0}
     this.classes = props.classes
   }
   getLog (offset = '') {
-    fetch(`${URL_BASE}/api/iplog/${offset}`)
+    fetch(`${URL_BASE}/api/iplog/${offset}`, {
+      credentials: 'include'
+    })
     .then((data) => {
       return data.json()
     })
     .then((json) => {
+      let offset = json[json.length - 1].timestamp
       this.setState({
-        log: json
+        log: json,
+        offset: offset
       })
     })
   }
   componentWillReceiveProps (newProps) {
-    this.setState(this.getState(newProps));
+    if (newProps.location === this.props.location) {
+      this.setState(this.getState(newProps));
+    }
   }
   componentDidMount(){ this.getState() }
 
   getState (props) {
     props = props || this.props;
     return {
-      log: this.getLog()
+      log: this.getLog(props.offset)
     };
   }
   render () {
@@ -100,43 +108,51 @@ class IplogComponent extends Component {
     if (this.state && this.state.log) {
       items = this.state.log.map((item, i) => {
         let time = new Date(item.timestamp).toString()
-        return (<tr key={i}>
-        <td>
-          {i}
-        </td>
-        <td>
+        return (<TableRow key={i}>
+        <TableCell>
           {item.name}
-        </td>
-        <td>
+        </TableCell>
+        <TableCell>
           {item.ip}
-        </td>
-        <td>
+        </TableCell>
+        <TableCell>
           {time}
-        </td>
-      </tr>)
+        </TableCell>
+      </TableRow>)
       })
     }
+    var offset = ''
+    if (this.state.offset) {
+      offset = this.state.offset
+    }
+    var nextPage = '/iplog/' + offset
 
     return (
-      <table>
-          <thead>
-          <tr>
-            <td>Count</td>
-            <td>User id</td>
-            <td>User ip</td>
-            <td>Time</td>
-          </tr>
-        </thead>
-        <tbody>
+      <div>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>User</TableCell>
+            <TableCell>IP</TableCell>
+            <TableCell>Time</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
           {items}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
+      <Link to={nextPage}>
+      <Button raised color="primary">
+        Next page
+      </Button>
+      </Link>
+      </div>
     )
   }
 }
 
-const Iplog = () => (
-  <IplogComponent/>
+const Iplog = ({ match }) => (
+  <IplogComponent offset={match.params.offset} />
 )
 
 const Numbers = () => (
@@ -212,6 +228,8 @@ class App extends Component {
           <main className={this.classes.content}>
 
               <Route exact path="/" component={Iplog}/>
+              <Route exact path="/iplog" component={Iplog}/>
+              <Route exact path="/iplog/:offset" component={Iplog}/>
               <Route path="/numbers" component={Numbers}/>
           </main>
 
